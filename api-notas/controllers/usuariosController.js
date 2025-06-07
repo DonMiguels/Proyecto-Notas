@@ -1,4 +1,3 @@
-// controllers/usuariosController.js
 const pool = require('../db/connection');
 
 const registrarUsuario = async (req, res) => {

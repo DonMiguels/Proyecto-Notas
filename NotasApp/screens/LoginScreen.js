@@ -1,23 +1,33 @@
 import React, { useState } from 'react';
 import { View, TextInput, Button, Alert, StyleSheet, Text } from 'react-native';
+import axios from 'axios';
 
 export default function LoginScreen({ navigation }) {
   const [usuario, setUsuario] = useState('');
   const [contrasena, setContrasena] = useState('');
 
-  const manejarLogin = () => {
+  const manejarLogin = async () => {
     if (!usuario || !contrasena) {
       Alert.alert('Error', 'Por favor ingresa usuario y contraseña');
       return;
     }
 
-    // Muestra el mensaje y navega después
-    Alert.alert('Éxito', `Usuario ${usuario} ha iniciado sesión`, [
-      {
-        text: 'OK',
-        onPress: () => navigation.navigate('Notas') // ✅ Redirige a la pantalla Notas
-      }
-    ]);
+    try {
+      const response = await axios.post('http://192.168.1.149:3000/api/usuarios/login', {
+        nombre_usuario: usuario,
+        contrasena: contrasena,
+      });
+
+      Alert.alert('Éxito', response.data.mensaje, [
+        {
+          text: 'OK',
+          onPress: () => navigation.navigate('Notas', { usuario: response.data.usuario }),
+        },
+      ]);
+    } catch (error) {
+      const mensaje = error.response?.data?.mensaje || 'Error al iniciar sesión';
+      Alert.alert('Error', mensaje);
+    }
   };
 
   return (
@@ -25,7 +35,7 @@ export default function LoginScreen({ navigation }) {
       <Text style={styles.titulo}>Iniciar Sesión</Text>
       <TextInput
         style={styles.input}
-        placeholder="Usuario o Email"
+        placeholder="Usuario"
         value={usuario}
         onChangeText={setUsuario}
         autoCapitalize="none"

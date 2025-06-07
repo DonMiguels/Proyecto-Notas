@@ -1,72 +1,75 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, Button, StyleSheet, Alert } from 'react-native';
+import axios from 'axios';
 
-export default function RegistroScreen({ navigation }) {
-  const [usuario, setUsuario] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+const RegistroScreen = ({ navigation }) => {
+  const [nombreUsuario, setNombreUsuario] = useState('');
+  const [contrasena, setContrasena] = useState('');
 
-  const handleRegistro = () => {
-    if (!usuario || !email || !password) {
-      Alert.alert('Error', 'Por favor, completa todos los campos');
+  const registrarUsuario = async () => {
+    if (!nombreUsuario || !contrasena) {
+      Alert.alert('Error', 'Todos los campos son obligatorios');
       return;
     }
-    
-    Alert.alert('Registro exitoso', `Usuario: ${usuario}`);
-    navigation.navigate('Inicio');  
+
+    try {
+      const response = await axios.post('http://192.168.1.149:3000/api/usuarios/registro', {
+        nombre_usuario: nombreUsuario,
+        contrasena: contrasena,
+      });
+
+      Alert.alert('Éxito', response.data.mensaje);
+      navigation.navigate('Login'); // Asegúrate que tengas esa pantalla definida
+    } catch (error) {
+      const mensaje = error.response?.data?.mensaje || 'Error en el servidor';
+      Alert.alert('Error', mensaje);
+    }
   };
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Registro</Text>
-      
-      <TextInput
-        style={styles.input}
-        placeholder="Nombre de usuario"
-        value={usuario}
-        onChangeText={setUsuario}
-      />
+      <Text style={styles.titulo}>Registro</Text>
 
       <TextInput
         style={styles.input}
-        placeholder="Correo electrónico"
-        keyboardType="email-address"
-        autoCapitalize="none"
-        value={email}
-        onChangeText={setEmail}
+        placeholder="Nombre de usuario"
+        value={nombreUsuario}
+        onChangeText={setNombreUsuario}
       />
 
       <TextInput
         style={styles.input}
         placeholder="Contraseña"
         secureTextEntry
-        value={password}
-        onChangeText={setPassword}
+        value={contrasena}
+        onChangeText={setContrasena}
       />
 
-      <Button title="Registrarse" onPress={handleRegistro} />
+      <Button title="Registrarse" onPress={registrarUsuario} />
     </View>
   );
-}
+};
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 20,
     justifyContent: 'center',
+    padding: 20,
     backgroundColor: '#fff',
   },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    marginBottom: 24,
+  titulo: {
+    fontSize: 24,
+    marginBottom: 20,
     textAlign: 'center',
+    fontWeight: 'bold',
   },
   input: {
     borderWidth: 1,
-    borderColor: '#888',
-    padding: 12,
-    marginBottom: 16,
-    borderRadius: 6,
+    borderColor: '#999',
+    borderRadius: 5,
+    padding: 10,
+    marginBottom: 15,
   },
 });
+
+export default RegistroScreen;
