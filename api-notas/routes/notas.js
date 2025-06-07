@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+
 const {
   obtenerNotas,
   crearNota,
@@ -10,13 +11,13 @@ const {
 // Obtener todas las notas de un usuario
 router.get('/:usuario_id', obtenerNotas);
 
-// Crear una nota
+// Crear una nueva nota
 router.post('/', crearNota);
 
-// Actualizar nota por id
+// Actualizar una nota por ID
 router.put('/:id', actualizarNota);
 
-// Eliminar nota por id
+// Eliminar una nota por ID
 router.delete('/:id', eliminarNota);
 
 module.exports = router;

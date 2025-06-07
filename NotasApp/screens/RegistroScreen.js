@@ -19,7 +19,7 @@ const RegistroScreen = ({ navigation }) => {
       });
 
       Alert.alert('Éxito', response.data.mensaje);
-      navigation.navigate('Login'); // Asegúrate que tengas esa pantalla definida
+      navigation.navigate('Login'); 
     } catch (error) {
       const mensaje = error.response?.data?.mensaje || 'Error en el servidor';
       Alert.alert('Error', mensaje);

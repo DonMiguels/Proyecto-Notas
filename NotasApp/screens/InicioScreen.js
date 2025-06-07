@@ -34,7 +34,7 @@ const InicioScreen = ({ navigation }) => {
 
   const backgroundColor = colorAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: ['#d7f0ff', '#b0e0ff'], // Azul celeste claro a azul suave
+    outputRange: ['#d7f0ff', '#b0e0ff'], 
   });
 
   return (

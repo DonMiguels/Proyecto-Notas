@@ -1,5 +1,12 @@
 import React, { useState } from 'react';
-import { View, TextInput, Button, Alert, StyleSheet, Text } from 'react-native';
+import {
+  View,
+  TextInput,
+  Button,
+  Alert,
+  StyleSheet,
+  Text,
+} from 'react-native';
 import axios from 'axios';
 
 export default function LoginScreen({ navigation }) {
@@ -18,10 +25,17 @@ export default function LoginScreen({ navigation }) {
         contrasena: contrasena,
       });
 
+      const usuario_id = response.data.usuario?.id;
+
+      if (!usuario_id) {
+        Alert.alert('Error', 'No se recibió el ID del usuario');
+        return;
+      }
+
       Alert.alert('Éxito', response.data.mensaje, [
         {
           text: 'OK',
-          onPress: () => navigation.navigate('Notas', { usuario: response.data.usuario }),
+          onPress: () => navigation.navigate('Notas', { usuario_id }),
         },
       ]);
     } catch (error) {

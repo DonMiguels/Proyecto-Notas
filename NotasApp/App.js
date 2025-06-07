@@ -5,7 +5,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import InicioScreen from './screens/InicioScreen';
 import LoginScreen from './screens/LoginScreen';
 import RegistroScreen from './screens/RegistroScreen';
-import NotasScreen from './screens/NotasScreen'; // Nueva pantalla de notas
+import NotasScreen from './screens/NotasScreen'; 
 
 const Stack = createNativeStackNavigator();
 

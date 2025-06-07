@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,96 +8,85 @@ import {
   Modal,
   TextInput,
   Alert,
-  Animated,
+  ActivityIndicator,
 } from 'react-native';
+import axios from 'axios';
 
-export default function NotasScreen() {
-  // TODO: Cambiar por usuario real (ejemplo fijo aquí)
-  const usuarioId = 1;
+export default function NotasScreen({ route }) {
+  const { usuario_id } = route.params;  // Recibe el ID del usuario desde la navegación
+  const IP_LOCAL = '192.168.1.149'; 
+  const BASE_URL = `http://${IP_LOCAL}:3000/api/notas`;
 
   const [notas, setNotas] = useState([]);
-  const [modalCrearVisible, setModalCrearVisible] = useState(false);
-  const [modalEditarVisible, setModalEditarVisible] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  const [modalVisible, setModalVisible] = useState(false);
   const [notaActual, setNotaActual] = useState(null);
+
   const [titulo, setTitulo] = useState('');
   const [contenido, setContenido] = useState('');
 
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-
-  // Cargar notas desde backend
-  useEffect(() => {
-    fetchNotas();
-  }, []);
-
+  // Cargar notas del usuario
   const fetchNotas = async () => {
+    setLoading(true);
     try {
-      const response = await fetch(`http://localhost:3000/api/notas/usuario/${usuarioId}`);
-      const data = await response.json();
-      setNotas(data);
+      // Cambié la URL para que sea `/${usuario_id}`, que coincide con la ruta backend
+      const response = await axios.get(`${BASE_URL}/${usuario_id}`);
+      setNotas(response.data);
     } catch (error) {
       Alert.alert('Error', 'No se pudieron cargar las notas');
     }
+    setLoading(false);
   };
+
+  useEffect(() => {
+    fetchNotas();
+  }, [usuario_id]);
 
   const abrirModalNuevaNota = () => {
     setNotaActual(null);
     setTitulo('');
     setContenido('');
-    setModalCrearVisible(true);
+    setModalVisible(true);
   };
 
   const abrirModalEditar = (nota) => {
     setNotaActual(nota);
     setTitulo(nota.titulo);
     setContenido(nota.contenido);
-    setModalEditarVisible(true);
+    setModalVisible(true);
   };
 
   const guardarNota = async () => {
-    if (!titulo || !contenido) {
-      Alert.alert('Error', 'Título y contenido requeridos');
+    if (!titulo.trim() || !contenido.trim()) {
+      Alert.alert('Error', 'Título y contenido son requeridos');
       return;
     }
 
-    if (notaActual) {
-      // Editar nota
-      try {
-        const response = await fetch(`http://localhost:3000/api/notas/${notaActual.id}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ titulo, contenido }),
-        });
-        if (!response.ok) throw new Error('Error al actualizar');
-
+    try {
+      if (notaActual) {
+        // Actualizar nota
+        await axios.put(`${BASE_URL}/${notaActual.id}`, { titulo, contenido });
         setNotas((prev) =>
           prev.map((n) =>
             n.id === notaActual.id ? { ...n, titulo, contenido } : n
           )
         );
-        setModalEditarVisible(false);
-      } catch (error) {
-        Alert.alert('Error', 'No se pudo actualizar la nota');
-      }
-    } else {
-      // Crear nota
-      try {
-        const response = await fetch(`http://localhost:3000/api/notas`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ usuario_id: usuarioId, titulo, contenido }),
+      } else {
+        // Crear nueva nota
+        const response = await axios.post(BASE_URL, {
+          usuario_id,
+          titulo,
+          contenido,
         });
-        if (!response.ok) throw new Error('Error al crear');
-
-        const nuevaNota = await response.json();
-        setNotas((prev) => [nuevaNota, ...prev]);
-        setModalCrearVisible(false);
-      } catch (error) {
-        Alert.alert('Error', 'No se pudo crear la nota');
+        setNotas((prev) => [response.data, ...prev]);
       }
+      setModalVisible(false);
+      setTitulo('');
+      setContenido('');
+    } catch (error) {
+      Alert.alert('Error', 'No se pudo guardar la nota');
     }
-
-    setTitulo('');
-    setContenido('');
   };
 
   const eliminarNota = (id) => {
@@ -107,11 +96,7 @@ export default function NotasScreen() {
         text: 'Eliminar',
         onPress: async () => {
           try {
-            const response = await fetch(`http://localhost:3000/api/notas/${id}`, {
-              method: 'DELETE',
-            });
-            if (!response.ok) throw new Error('Error al eliminar');
-
+            await axios.delete(`${BASE_URL}/${id}`);
             setNotas((prev) => prev.filter((n) => n.id !== id));
           } catch (error) {
             Alert.alert('Error', 'No se pudo eliminar la nota');
@@ -122,23 +107,10 @@ export default function NotasScreen() {
     ]);
   };
 
-  useEffect(() => {
-    if (modalEditarVisible) {
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 300,
-        useNativeDriver: true,
-      }).start();
-    } else {
-      fadeAnim.setValue(0);
-    }
-  }, [modalEditarVisible]);
-
   const renderItem = ({ item }) => (
     <View style={styles.nota}>
       <Text style={styles.tituloNota}>{item.titulo}</Text>
       <Text style={styles.contenidoNota}>{item.contenido}</Text>
-
       <View style={styles.botones}>
         <TouchableOpacity
           style={[styles.botonAccion, { backgroundColor: '#FF9500' }]}
@@ -146,7 +118,6 @@ export default function NotasScreen() {
         >
           <Text style={styles.textoBotonAccion}>Editar</Text>
         </TouchableOpacity>
-
         <TouchableOpacity
           style={[styles.botonAccion, { backgroundColor: '#FF3B30' }]}
           onPress={() => eliminarNota(item.id)}
@@ -159,24 +130,33 @@ export default function NotasScreen() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.encabezado}> Mis Notas</Text>
+      <Text style={styles.encabezado}>Mis Notas</Text>
 
-      <FlatList
-        data={notas}
-        renderItem={renderItem}
-        keyExtractor={(item) => item.id.toString()}
-        contentContainerStyle={styles.lista}
-      />
+      {loading ? (
+        <ActivityIndicator size="large" color="#007AFF" />
+      ) : (
+        <FlatList
+          data={notas}
+          renderItem={renderItem}
+          keyExtractor={(item) => item.id.toString()}
+          contentContainerStyle={styles.lista}
+          ListEmptyComponent={
+            <Text style={{ textAlign: 'center', marginTop: 20, color: '#666' }}>
+              No hay notas disponibles
+            </Text>
+          }
+        />
+      )}
 
       <TouchableOpacity style={styles.botonAgregar} onPress={abrirModalNuevaNota}>
         <Text style={styles.botonTexto}>＋ Nueva Nota</Text>
       </TouchableOpacity>
 
-      {/* Modal para crear nueva nota */}
-      <Modal visible={modalCrearVisible} animationType="slide" transparent>
+      {/* Modal para crear/editar nota */}
+      <Modal visible={modalVisible} animationType="slide" transparent>
         <View style={styles.modalContainer}>
           <View style={styles.modalContenido}>
-            <Text style={styles.modalTitulo}>Nueva Nota</Text>
+            <Text style={styles.modalTitulo}>{notaActual ? 'Editar Nota' : 'Nueva Nota'}</Text>
             <TextInput
               style={styles.input}
               placeholder="Título"
@@ -190,13 +170,11 @@ export default function NotasScreen() {
               onChangeText={setContenido}
               multiline
             />
-
             <TouchableOpacity style={styles.botonGuardar} onPress={guardarNota}>
-              <Text style={styles.botonTexto}>Guardar</Text>
+              <Text style={styles.botonTexto}>{notaActual ? 'Actualizar' : 'Guardar'}</Text>
             </TouchableOpacity>
-
             <TouchableOpacity
-              onPress={() => setModalCrearVisible(false)}
+              onPress={() => setModalVisible(false)}
               style={styles.botonCancelar}
             >
               <Text style={{ color: '#666' }}>Cancelar</Text>
@@ -204,60 +182,14 @@ export default function NotasScreen() {
           </View>
         </View>
       </Modal>
-
-      {/* Modal animado para editar nota */}
-      <Modal visible={modalEditarVisible} transparent>
-        <Animated.View style={[styles.modalContainer, { opacity: fadeAnim }]}>
-          <View style={styles.modalContenido}>
-            <Text style={styles.modalTitulo}>Editar Nota</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Título"
-              value={titulo}
-              onChangeText={setTitulo}
-            />
-            <TextInput
-              style={[styles.input, { height: 100 }]}
-              placeholder="Contenido"
-              value={contenido}
-              onChangeText={setContenido}
-              multiline
-            />
-
-            <TouchableOpacity style={styles.botonGuardar} onPress={guardarNota}>
-              <Text style={styles.botonTexto}>Actualizar</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              onPress={() => setModalEditarVisible(false)}
-              style={styles.botonCancelar}
-            >
-              <Text style={{ color: '#666' }}>Cancelar</Text>
-            </TouchableOpacity>
-          </View>
-        </Animated.View>
-      </Modal>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F4F4F8',
-    paddingHorizontal: 20,
-    paddingTop: 40,
-  },
-  encabezado: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    textAlign: 'center',
-    marginBottom: 20,
-    color: '#333',
-  },
-  lista: {
-    paddingBottom: 100,
-  },
+  container: { flex: 1, backgroundColor: '#F4F4F8', paddingHorizontal: 20, paddingTop: 40 },
+  encabezado: { fontSize: 28, fontWeight: 'bold', textAlign: 'center', marginBottom: 20, color: '#333' },
+  lista: { paddingBottom: 100 },
   nota: {
     backgroundColor: '#fff',
     padding: 20,
@@ -265,30 +197,11 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     elevation: 2,
   },
-  tituloNota: {
-    fontSize: 18,
-    fontWeight: '600',
-    marginBottom: 5,
-  },
-  contenidoNota: {
-    fontSize: 15,
-    color: '#555',
-  },
-  botones: {
-    flexDirection: 'row',
-    marginTop: 10,
-    justifyContent: 'flex-end',
-  },
-  botonAccion: {
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    marginLeft: 10,
-  },
-  textoBotonAccion: {
-    color: '#fff',
-    fontWeight: 'bold',
-  },
+  tituloNota: { fontSize: 18, fontWeight: '600', marginBottom: 5 },
+  contenidoNota: { fontSize: 15, color: '#555' },
+  botones: { flexDirection: 'row', marginTop: 10, justifyContent: 'flex-end' },
+  botonAccion: { paddingVertical: 6, paddingHorizontal: 12, borderRadius: 8, marginLeft: 10 },
+  textoBotonAccion: { color: '#fff', fontWeight: 'bold' },
   botonAgregar: {
     position: 'absolute',
     bottom: 30,
@@ -299,11 +212,7 @@ const styles = StyleSheet.create({
     borderRadius: 30,
     elevation: 5,
   },
-  botonTexto: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
+  botonTexto: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
   modalContainer: {
     flex: 1,
     backgroundColor: '#000000aa',
