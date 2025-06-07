@@ -2,7 +2,9 @@
 
 const express = require('express');
 const cors = require('cors');
-const usuariosRoutes = require('./routes/usuarios'); // Ajusta la ruta si es necesario
+
+const usuariosRoutes = require('./routes/usuarios'); // Ruta usuarios
+const notasRoutes = require('./routes/notas'); // Nueva ruta para notas (ajusta si es necesario)
 
 const app = express();
 const PORT = 3000;
@@ -13,6 +15,7 @@ app.use(express.json());
 
 // Rutas
 app.use('/api/usuarios', usuariosRoutes);
+app.use('/api/notas', notasRoutes); // Agrego ruta para notas
 
 // Ruta raíz para comprobar que el servidor funciona
 app.get('/', (req, res) => {

@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -12,32 +12,32 @@ import {
 } from 'react-native';
 
 export default function NotasScreen() {
-  const [notas, setNotas] = useState([
-    { id: '1', titulo: 'Comprar víveres', contenido: 'Leche, pan, arroz, huevos' },
-    { id: '2', titulo: 'Estudiar', contenido: 'Repasar React Native y Firebase' },
-    { id: '3', titulo: 'Cita médica', contenido: 'Lunes a las 4:30 PM' },
-  ]);
+  // TODO: Cambiar por usuario real (ejemplo fijo aquí)
+  const usuarioId = 1;
 
+  const [notas, setNotas] = useState([]);
   const [modalCrearVisible, setModalCrearVisible] = useState(false);
   const [modalEditarVisible, setModalEditarVisible] = useState(false);
   const [notaActual, setNotaActual] = useState(null);
   const [titulo, setTitulo] = useState('');
   const [contenido, setContenido] = useState('');
 
-  // Animación para el modal de edición
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
+  // Cargar notas desde backend
   useEffect(() => {
-    if (modalEditarVisible) {
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 300,
-        useNativeDriver: true,
-      }).start();
-    } else {
-      fadeAnim.setValue(0);
+    fetchNotas();
+  }, []);
+
+  const fetchNotas = async () => {
+    try {
+      const response = await fetch(`http://localhost:3000/api/notas/usuario/${usuarioId}`);
+      const data = await response.json();
+      setNotas(data);
+    } catch (error) {
+      Alert.alert('Error', 'No se pudieron cargar las notas');
     }
-  }, [modalEditarVisible]);
+  };
 
   const abrirModalNuevaNota = () => {
     setNotaActual(null);
@@ -53,27 +53,47 @@ export default function NotasScreen() {
     setModalEditarVisible(true);
   };
 
-  const guardarNota = () => {
+  const guardarNota = async () => {
     if (!titulo || !contenido) {
       Alert.alert('Error', 'Título y contenido requeridos');
       return;
     }
 
     if (notaActual) {
-      setNotas((prev) =>
-        prev.map((n) =>
-          n.id === notaActual.id ? { ...n, titulo, contenido } : n
-        )
-      );
-      setModalEditarVisible(false);
+      // Editar nota
+      try {
+        const response = await fetch(`http://localhost:3000/api/notas/${notaActual.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ titulo, contenido }),
+        });
+        if (!response.ok) throw new Error('Error al actualizar');
+
+        setNotas((prev) =>
+          prev.map((n) =>
+            n.id === notaActual.id ? { ...n, titulo, contenido } : n
+          )
+        );
+        setModalEditarVisible(false);
+      } catch (error) {
+        Alert.alert('Error', 'No se pudo actualizar la nota');
+      }
     } else {
-      const nuevaNota = {
-        id: Date.now().toString(),
-        titulo,
-        contenido,
-      };
-      setNotas((prev) => [nuevaNota, ...prev]);
-      setModalCrearVisible(false);
+      // Crear nota
+      try {
+        const response = await fetch(`http://localhost:3000/api/notas`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ usuario_id: usuarioId, titulo, contenido }),
+        });
+        if (!response.ok) throw new Error('Error al crear');
+
+        const nuevaNota = await response.json();
+        setNotas((prev) => [nuevaNota, ...prev]);
+        setModalCrearVisible(false);
+      } catch (error) {
+        Alert.alert('Error', 'No se pudo crear la nota');
+      }
     }
 
     setTitulo('');
@@ -85,11 +105,34 @@ export default function NotasScreen() {
       { text: 'Cancelar', style: 'cancel' },
       {
         text: 'Eliminar',
-        onPress: () => setNotas((prev) => prev.filter((n) => n.id !== id)),
+        onPress: async () => {
+          try {
+            const response = await fetch(`http://localhost:3000/api/notas/${id}`, {
+              method: 'DELETE',
+            });
+            if (!response.ok) throw new Error('Error al eliminar');
+
+            setNotas((prev) => prev.filter((n) => n.id !== id));
+          } catch (error) {
+            Alert.alert('Error', 'No se pudo eliminar la nota');
+          }
+        },
         style: 'destructive',
       },
     ]);
   };
+
+  useEffect(() => {
+    if (modalEditarVisible) {
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: true,
+      }).start();
+    } else {
+      fadeAnim.setValue(0);
+    }
+  }, [modalEditarVisible]);
 
   const renderItem = ({ item }) => (
     <View style={styles.nota}>
@@ -116,12 +159,12 @@ export default function NotasScreen() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.encabezado}>📝 Mis Notas</Text>
+      <Text style={styles.encabezado}> Mis Notas</Text>
 
       <FlatList
         data={notas}
         renderItem={renderItem}
-        keyExtractor={(item) => item.id}
+        keyExtractor={(item) => item.id.toString()}
         contentContainerStyle={styles.lista}
       />
 
